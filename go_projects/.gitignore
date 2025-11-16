@@ -1,0 +1,39 @@
+# 编译输出
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go_projects
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 配置文件（包含敏感信息）
+config/config.yaml
+
+# 上传文件
+uploads/
+music/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 日志
+*.log
+
+# 依赖
+vendor/
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
