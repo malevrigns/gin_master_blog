@@ -6,6 +6,13 @@ export const APP_LOGO =
   import.meta.env.VITE_APP_LOGO ||
   "https://placehold.co/128x128/E1E7EF/1F2937?text=App";
 
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+
+export const GITHUB_OAUTH_URL = import.meta.env.VITE_GITHUB_OAUTH_URL || "https://github.com/login";
+export const GOOGLE_OAUTH_URL = import.meta.env.VITE_GOOGLE_OAUTH_URL || "https://accounts.google.com";
+export const GITHUB_PROFILE = import.meta.env.VITE_GITHUB_PROFILE || "https://github.com";
+
 // Generate login URL at runtime so redirect URI reflects the current origin.
 export const getLoginUrl = () => {
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;

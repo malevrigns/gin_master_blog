@@ -4,6 +4,7 @@ import (
 	"blog-system/config"
 	"blog-system/controllers"
 	"blog-system/middleware"
+	"blog-system/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,16 +15,25 @@ func SetupRoutes() *gin.Engine {
 	// 中间件
 	r.Use(middleware.CORSMiddleware())
 
-	// 控制器
-	authController := controllers.NewAuthController()
-	articleController := controllers.NewArticleController()
-	musicController := controllers.NewMusicController()
-	categoryController := controllers.NewCategoryController()
-	tagController := controllers.NewTagController()
-	commentController := controllers.NewCommentController()
-	linkController := controllers.NewLinkController()
-	uploadController := controllers.NewUploadController()
-	labController := controllers.NewLabController()
+	// 初始化服务
+	articleService := services.NewArticleService()
+	categoryService := services.NewCategoryService()
+	tagService := services.NewTagService()
+	userService := services.NewUserService()
+	commentService := services.NewCommentService()
+	musicService := services.NewMusicService()
+	labService := services.NewLabService()
+
+	// 初始化控制器
+	authController := controllers.NewAuthController(userService)
+	articleController := controllers.NewArticleController(articleService)
+	musicController := controllers.NewMusicController(musicService)
+	categoryController := controllers.NewCategoryController(categoryService)
+	tagController := controllers.NewTagController(tagService)
+	commentController := controllers.NewCommentController(commentService)
+	linkController := controllers.NewLinkController() // LinkController not refactored yet, assuming it doesn't need service or I missed it.
+	uploadController := controllers.NewUploadController() // UploadController not refactored yet.
+	labController := controllers.NewLabController(labService, articleService)
 
 	// 公开路由
 	api := r.Group("/api")
@@ -141,4 +151,3 @@ func SetupRoutes() *gin.Engine {
 
 	return r
 }
-

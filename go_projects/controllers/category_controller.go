@@ -1,59 +1,50 @@
 package controllers
 
 import (
-	"blog-system/database"
 	"blog-system/models"
+	"blog-system/services"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gosimple/slug"
 )
 
-type CategoryController struct{}
-
-func NewCategoryController() *CategoryController {
-	return &CategoryController{}
+type CategoryController struct {
+	service services.CategoryService
 }
 
-// GetCategories 获取分类列表
+func NewCategoryController(service services.CategoryService) *CategoryController {
+	return &CategoryController{service: service}
+}
+
 func (cc *CategoryController) GetCategories(c *gin.Context) {
-	var categories []models.Category
-	database.DB.Find(&categories)
+	categories, err := cc.service.GetCategories()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch categories"})
+		return
+	}
 	c.JSON(http.StatusOK, categories)
 }
 
-// GetCategory 获取分类详情
 func (cc *CategoryController) GetCategory(c *gin.Context) {
-	id := c.Param("id")
-	var category models.Category
-
-	if err := database.DB.Preload("Articles").First(&category, id).Error; err != nil {
+	id, _ := strconv.Atoi(c.Param("id"))
+	category, err := cc.service.GetCategory(uint(id))
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
 		return
 	}
-
 	c.JSON(http.StatusOK, category)
 }
 
-// CreateCategory 创建分类
 func (cc *CategoryController) CreateCategory(c *gin.Context) {
-	var input struct {
-		Name        string `json:"name" binding:"required"`
-		Description string `json:"description"`
-	}
-
+	var input models.Category
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	category := models.Category{
-		Name:        input.Name,
-		Slug:        slug.Make(input.Name),
-		Description: input.Description,
-	}
-
-	if err := database.DB.Create(&category).Error; err != nil {
+	category, err := cc.service.CreateCategory(&input)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create category"})
 		return
 	}
@@ -61,35 +52,16 @@ func (cc *CategoryController) CreateCategory(c *gin.Context) {
 	c.JSON(http.StatusCreated, category)
 }
 
-// UpdateCategory 更新分类
 func (cc *CategoryController) UpdateCategory(c *gin.Context) {
-	id := c.Param("id")
-	var category models.Category
-
-	if err := database.DB.First(&category, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
-		return
-	}
-
-	var input struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-	}
-
+	id, _ := strconv.Atoi(c.Param("id"))
+	var input models.Category
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if input.Name != "" {
-		category.Name = input.Name
-		category.Slug = slug.Make(input.Name)
-	}
-	if input.Description != "" {
-		category.Description = input.Description
-	}
-
-	if err := database.DB.Save(&category).Error; err != nil {
+	category, err := cc.service.UpdateCategory(uint(id), &input)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update category"})
 		return
 	}
@@ -97,17 +69,12 @@ func (cc *CategoryController) UpdateCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, category)
 }
 
-// DeleteCategory 删除分类
 func (cc *CategoryController) DeleteCategory(c *gin.Context) {
-	id := c.Param("id")
-	var category models.Category
-
-	if err := database.DB.First(&category, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
+	id, _ := strconv.Atoi(c.Param("id"))
+	if err := cc.service.DeleteCategory(uint(id)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete category"})
 		return
 	}
 
-	database.DB.Delete(&category)
 	c.JSON(http.StatusOK, gin.H{"message": "Category deleted successfully"})
 }
-

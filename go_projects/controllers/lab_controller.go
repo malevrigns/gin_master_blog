@@ -1,18 +1,17 @@
 package controllers
 
 import (
-	"blog-system/database"
 	"blog-system/models"
+	"blog-system/services"
 	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type LabController struct{}
-
-func NewLabController() *LabController {
-	return &LabController{}
+type LabController struct {
+	labService     services.LabService
+	articleService services.ArticleService
 }
 
 type labResponse struct {
@@ -25,15 +24,24 @@ type labResponse struct {
 	Description string                `json:"description"`
 	Focus       string                `json:"focus"`
 	HeroImage   string                `json:"hero_image"`
-	Highlights  []models.LabHighlight `json:"highlights"`
-	Resources   []models.LabResource  `json:"resources,omitempty"`
+	Highlights  []models.LabHighlight `json:"highlights,omitempty"`
 	Content     string                `json:"content,omitempty"`
+	Resources   []models.LabResource  `json:"resources,omitempty"`
 }
+
+func NewLabController(labService services.LabService, articleService services.ArticleService) *LabController {
+	return &LabController{
+		labService:     labService,
+		articleService: articleService,
+	}
+}
+
+// ... (previous methods GetLabs, GetLab, mapLabToResponse remain same)
 
 // GetLabs 返回实验室模块列表
 func (lc *LabController) GetLabs(c *gin.Context) {
-	var labs []models.Lab
-	if err := database.DB.Order("id ASC").Find(&labs).Error; err != nil {
+	labs, err := lc.labService.GetLabs()
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load labs"})
 		return
 	}
@@ -49,13 +57,13 @@ func (lc *LabController) GetLabs(c *gin.Context) {
 // GetLab 返回单个模块详情
 func (lc *LabController) GetLab(c *gin.Context) {
 	slug := c.Param("slug")
-	var lab models.Lab
-	if err := database.DB.Where("slug = ?", slug).First(&lab).Error; err != nil {
+	lab, err := lc.labService.GetLabBySlug(slug)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Lab not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, mapLabToResponse(lab, true))
+	c.JSON(http.StatusOK, mapLabToResponse(*lab, true))
 }
 
 func mapLabToResponse(lab models.Lab, includeContent bool) labResponse {
@@ -94,8 +102,8 @@ func mapLabToResponse(lab models.Lab, includeContent bool) labResponse {
 // GetLabArticles returns articles related to a lab by tag/topic
 func (lc *LabController) GetLabArticles(c *gin.Context) {
 	slug := c.Param("slug")
-	var lab models.Lab
-	if err := database.DB.Where("slug = ?", slug).First(&lab).Error; err != nil {
+	lab, err := lc.labService.GetLabBySlug(slug)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Lab not found"})
 		return
 	}
@@ -106,16 +114,13 @@ func (lc *LabController) GetLabArticles(c *gin.Context) {
 		return
 	}
 
-	var articles []models.Article
-	query := database.DB.Preload("Author").Preload("Category").Preload("Tags").
-		Joins("JOIN article_tags ON article_tags.article_id = articles.id").
-		Joins("JOIN tags ON tags.id = article_tags.tag_id").
-		Where("tags.slug = ?", tagSlug).
-		Where("articles.status = ?", "published").
-		Order("articles.published_at DESC, articles.created_at DESC").
-		Limit(20)
+	filters := map[string]interface{}{
+		"tag_slug": tagSlug,
+		"status":   "published",
+	}
 
-	if err := query.Find(&articles).Error; err != nil {
+	articles, _, _, _, err := lc.articleService.GetArticles(1, 20, filters)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load articles"})
 		return
 	}
